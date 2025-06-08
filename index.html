@@ -1,0 +1,1557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Law of Contract II - Exam Analyzer</title>
+    <!-- Chosen Palette: Scholarly Calm -->
+    <!-- Application Structure Plan: The application is designed as a single-page dashboard to transform the static report into an interactive study tool. The structure includes: 1) A main header for branding. 2) A tab-based navigation to switch between a high-level 'Dashboard' and a detailed 'Unit-wise Explorer'. 3) A dynamic content area that updates based on the selected tab. The Dashboard provides immediate insights with stat cards and a chart of the most frequent topics overall. The Unit-wise Explorer allows students to select a specific syllabus unit, which then displays a unit-specific summary, a chart of key topics for that unit, and a searchable/filterable table of all questions. This structure was chosen because it allows for a non-linear exploration of the data, empowering students to either get a quick overview or deep-dive into specific areas of the syllabus, which is a more effective study method than reading a linear report. Now includes a dedicated "Study Material" section within the Unit-wise Explorer to provide detailed answers, examples, and case laws for each unit's topics. Additionally, clicking on individual questions in the table will open a modal displaying the relevant study material for that question's topic. -->
+    <!-- Visualization & Content Choices:
+        - Report Info: High-level statistics (total questions, years covered). Goal: Inform. Viz: Stat Cards (HTML/Tailwind). Interaction: None. Justification: Provides immediate context and scope of the analysis.
+        - Report Info: Overall topic frequency. Goal: Prioritize study. Viz: Bar Chart (Chart.js). Interaction: Hover tooltips for details. Justification: Quickly highlights the most critical, high-yield topics across the entire syllabus.
+        - Report Info: Unit-specific topic frequency. Goal: Focused study. Viz: Bar Chart (Chart.js). Interaction: Chart updates upon unit selection. Justification: Helps students concentrate on the most important concepts within a single syllabus unit.
+        - Report Info: Full list of questions with metadata. Goal: Organize/Explore/Practice. Viz: Interactive HTML Table. Interaction: Filter by unit, search by keyword, click question for detailed answer. Justification: Provides a powerful, granular tool for students to find and practice specific types of questions, now with direct access to explanations.
+        - New Content: Detailed answers, examples, and case laws for each unit's topics. Goal: Educate/Explain/Illustrate. Viz: Expandable text sections (<details>/<summary>) and a modal pop-up for specific questions. Interaction: Click to expand/collapse (study material), click question to open modal. Justification: Integrates comprehensive study material directly into the interactive environment, enhancing understanding without cluttering the main view.
+    -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #F5F5F4; /* Stone 100 */
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 400px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        .nav-tab {
+            transition: all 0.3s ease;
+        }
+        .nav-tab.active {
+            border-color: #3B82F6; /* Blue 500 */
+            color: #3B82F6;
+            background-color: #EFF6FF; /* Blue 100 */
+        }
+        .unit-button.active {
+            background-color: #3B82F6;
+            color: white;
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3B82F6;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        details > summary {
+            list-style: none;
+        }
+        details > summary::-webkit-details-marker {
+            display: none;
+        }
+        details[open] summary .arrow {
+            transform: rotate(90deg);
+        }
+        .arrow {
+            display: inline-block;
+            transition: transform 0.2s;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body class="text-stone-800">
+
+    <div id="app" class="min-h-screen">
+        <header class="bg-white shadow-sm">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8">
+                <h1 class="text-3xl font-bold leading-tight text-stone-900">Law of Contract–II Exam Analyzer</h1>
+                <p class="text-sm text-stone-500 mt-1">An Interactive Study Guide for Osmania University LLB (2011, 2014, 2015 MDU, 2018-2023 Papers)</p>
+            </div>
+        </header>
+
+        <main class="py-8">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <!-- Navigation Tabs -->
+                <div class="border-b border-stone-200 mb-6">
+                    <nav class="-mb-px flex space-x-6" aria-label="Tabs">
+                        <button id="tab-dashboard" class="nav-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
+                            Dashboard
+                        </button>
+                        <button id="tab-explorer" class="nav-tab whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm">
+                            Unit-wise Explorer
+                        </button>
+                    </nav>
+                </div>
+
+                <!-- Dynamic Content Area -->
+                <div id="content-area">
+                    <!-- Loader -->
+                    <div id="loader" class="flex justify-center items-center h-64">
+                        <div class="loader"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <footer class="bg-white mt-12">
+            <div class="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 text-center text-sm text-stone-500">
+                <p>Data sourced from "Comprehensive Analysis of Osmania University LLB 3-Year Degree Second Semester LAW OF CONTRACT–II Previous Examination Questions (2011, 2014, 2018-2023)" and MDU 2015 papers.</p>
+                <p>This is an educational tool and does not guarantee exam performance.</p>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Question Details Modal -->
+    <div id="question-details-modal" class="fixed inset-0 bg-stone-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button onclick="App.closeModal()" class="absolute top-3 right-3 text-stone-500 hover:text-stone-800 text-2xl font-bold">&times;</button>
+            <div class="p-6">
+                <h2 id="modal-question-text" class="text-xl font-bold text-stone-900 mb-4"></h2>
+                <div id="modal-answer-content" class="text-stone-700">
+                    <!-- Answer content will be loaded here -->
+                </div>
+                <div id="llm-clarification-area" class="mt-4 pt-4 border-t border-stone-200 hidden">
+                    <h3 class="text-lg font-semibold text-blue-700 mb-2">LLM Clarification:</h3>
+                    <div id="llm-clarification-loader" class="flex justify-center items-center h-24 hidden">
+                        <div class="loader"></div>
+                    </div>
+                    <p id="llm-clarification-text" class="text-stone-700"></p>
+                    <p id="llm-clarification-error" class="text-red-500 hidden"></p>
+                </div>
+                <button id="ask-llm-button" class="mt-4 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors duration-200">
+                    ✨ Ask LLM for Clarification
+                </button>
+                <p class="text-sm text-stone-500 mt-4">Note: This answer is derived from the comprehensive study material provided for the respective unit and topic.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Examples Modal -->
+    <div id="llm-examples-modal" class="fixed inset-0 bg-stone-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button onclick="App.closeExamplesModal()" class="absolute top-3 right-3 text-stone-500 hover:text-stone-800 text-2xl font-bold">&times;</button>
+            <div class="p-6">
+                <h2 id="llm-examples-title" class="text-xl font-bold text-blue-600 mb-4"></h2>
+                <div id="llm-examples-loader" class="flex justify-center items-center h-24 hidden">
+                    <div class="loader"></div>
+                </div>
+                <div id="llm-examples-content" class="text-stone-700 space-y-3">
+                    <!-- LLM generated examples will be loaded here -->
+                </div>
+                <p id="llm-examples-error" class="text-red-500 hidden mt-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Summary Modal -->
+    <div id="llm-summary-modal" class="fixed inset-0 bg-stone-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button onclick="App.closeSummaryModal()" class="absolute top-3 right-3 text-stone-500 hover:text-stone-800 text-2xl font-bold">&times;</button>
+            <div class="p-6">
+                <h2 id="llm-summary-title" class="text-xl font-bold text-blue-600 mb-4"></h2>
+                <div id="llm-summary-loader" class="flex justify-center items-center h-24 hidden">
+                    <div class="loader"></div>
+                </div>
+                <div id="llm-summary-content" class="text-stone-700 space-y-3">
+                    <!-- LLM generated summary will be loaded here -->
+                </div>
+                <p id="llm-summary-error" class="text-red-500 hidden mt-4"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- LLM Case Law Modal -->
+    <div id="llm-case-law-modal" class="fixed inset-0 bg-stone-900 bg-opacity-75 flex items-center justify-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto relative">
+            <button onclick="App.closeCaseLawModal()" class="absolute top-3 right-3 text-stone-500 hover:text-stone-800 text-2xl font-bold">&times;</button>
+            <div class="p-6">
+                <h2 id="llm-case-law-title" class="text-xl font-bold text-blue-600 mb-4"></h2>
+                <div id="llm-case-law-loader" class="flex justify-center items-center h-24 hidden">
+                    <div class="loader"></div>
+                </div>
+                <div id="llm-case-law-content" class="text-stone-700 space-y-3">
+                    <!-- LLM generated case law will be loaded here -->
+                </div>
+                <p id="llm-case-law-error" class="text-red-500 hidden mt-4"></p>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+const App = {
+    // Data Store
+    db: {
+        questions: [
+            // Existing questions from previous updates
+            { id: 1, unit: 1, part: 'A', text: "Rights of indemnity Holder.", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 2, unit: 1, part: 'A', text: "Kinds of Guarantee.", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 3, unit: 1, part: 'B', text: "Explain the circumstances in which a surety is discharged from liability.", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 4, unit: 1, part: 'C', text: "A agrees to indemnify 'B', a newspaper proprietor against claims arising out of the libel printed in the newspaper concerning a person of repute. Is this a valid agreement?", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 5, unit: 1, part: 'A', text: "Pledge.", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 6, unit: 1, part: 'A', text: "Indemnity.", years: "December 2020, August/September 2018, January 2011", repetitions: 3, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 7, unit: 1, part: 'A', text: "Pledge by non-owner.", years: "December 2020", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 8, unit: 1, part: 'A', text: "Surety.", years: "December 2020", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 9, unit: 1, part: 'B', text: "Define 'Bailment' and 'Pledge'. When is a pledge created by non-owners valid?", years: "December 2020", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 10, unit: 1, part: 'B', text: "What are the rights of the surety against the principal, debtor, creditor and co-sureties?", years: "December 2020, January 2011", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 11, unit: 1, part: 'C', text: "'A' lends a horse to 'B' for his own riding. B allows C a member of his family to ride the horse. 'C' rides with care, but the horse accidentally falls and is injured. Decide.", years: "December 2020, July/August 2019", repetitions: 2, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 12, unit: 1, part: 'C', text: "'A' stands as a surety for the good conduct of 'B'. Who is employed in a cooperative society. Misappropriates some money. The Bank excuses him without informing 'A' of 'B's misconduct. 'B' again misappropriates Rs. 50,000/- the society files a suit against 'A' on the strength of the guarantee. Decide giving reasons.", years: "December 2020, July/August 2019", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 13, unit: 1, part: 'C', text: "'D' a carrier discovers that a consignment of tomatoes owned by 'E' has deteriorated badly before the destination is reached. He, therefore, sells that consignment for about a third of the market price. 'E' sues 'D' for damages. Decide.", years: "December 2020", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 14, unit: 1, part: 'A', text: "Co-Sureties.", years: "August/September 2019, August/September 2018", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 15, unit: 1, part: 'A', text: "Contract of Indemnity.", years: "August/September 2019, August/September 2018", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 16, unit: 1, part: 'A', text: "Bailment.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 17, unit: 1, part: 'A', text: "Finder of Goods.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 18, unit: 1, part: 'A', text: "Pawnor.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 19, unit: 1, part: 'C', text: "A gives silk to B a tailor, to be stitched into a coat. B promises 'A' to deliver the coat as soon as it is made and to give 'A' three months credit for the charges. Is B entitled to retain the Coat until the charges are paid?", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 20, unit: 1, part: 'A', text: "Contract of Guarantee.", years: "July/August 2019, December 2019", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 21, unit: 1, part: 'A', text: "Rights of Pawner.", years: "July/August 2019, January 2011", repetitions: 2, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 22, unit: 1, part: 'A', text: "Hypothecation.", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 23, unit: 1, part: 'A', text: "Rights of the Surety.", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 24, unit: 1, part: 'B', text: "Define 'Bailment'. What are the essentials of Bailment.", years: "July/August 2019, February 2022", repetitions: 2, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 25, unit: 1, part: 'B', text: "Define Contract of Guarantee'. What are the effects of misrepresentation and concealment on contract of guarantee?", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 26, unit: 1, part: 'B', text: "What do you mean by 'Pledge'? Who can Pledge? Discuss with latest examples.", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 27, unit: 1, part: 'A', text: "Liability of Bailor.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 28, unit: 1, part: 'B', text: "Define 'Contract of Indemnity'. In what aspects Indian Law differs from English Law on Contract of indemnity? Explain.", years: "August/September 2018, January 2011", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 29, unit: 1, part: 'B', text: "What is 'Bailment'? What are the Essential Features of Bailment with Suitable Examples?", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 30, unit: 1, part: 'C', text: "A entrusted some books to B for binding. B promised to complete the work and return the Same within ten days. Subsequent the books were burnt in an accidental fire. Can A recover damages for the loss from B? Decide.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 69, unit: 1, part: 'A', text: "What is continuing guarantee ? How is it revoked ?", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 70, unit: 1, part: 'B', text: "State the rights of surety against creditor and co-sureties.", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 71, unit: 1, part: 'B', text: "What is the difference between the contract of Bailment and Pledge ?", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 72, unit: 1, part: 'B', text: "Explain the various kinds of Guarantee.", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 73, unit: 1, part: 'B', text: "Elaborate the Rights of Surety with the help of decided case laws.", years: "January 2011", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 74, unit: 1, part: 'B', text: "Explain the Rights and Duties of pawnor.", years: "January 2011", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 81, unit: 1, part: 'B', text: "Define surety. Discuss the circumstances in which surety is discharged from his liability.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 82, unit: 1, part: 'B', text: "Define 'contract to indemnity'. What are its essential elements? Discuss the rights of an indemnity holder.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 83, unit: 1, part: 'B', text: "What do you understand by 'Bailment'? Describe the rights and duties of bailor.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 84, unit: 1, part: 'E', text: "Continuing Guarantee.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 85, unit: 1, part: 'E', text: "Difference between Indemnity and Insurance.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 86, unit: 1, part: 'E', text: "Position of finder of goods.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 87, unit: 1, part: 'E', text: "Lien.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            // New questions from MDU 2015 - Contract II Section
+            { id: 97, unit: 1, part: 'B', text: "Define surety. Discuss the circumstances in which surety is discharged from his liability.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 98, unit: 1, part: 'B', text: "Define 'contract to indemnity'. What are its essential elements? Discuss the rights of an indemnity holder.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 99, unit: 1, part: 'B', text: "What do you understand by 'Bailment' ? Describe the rights and duties of bailor.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 100, unit: 1, part: 'E', text: "Continuing Guarantee.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 101, unit: 1, part: 'E', text: "Difference between Indemnity and Insurance.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 102, unit: 1, part: 'E', text: "Position of finder of goods.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 103, unit: 1, part: 'E', text: "Lien.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            // Consolidated questions from c2.jpg & c7.jpg (December 2021) and c3.jpg (November 2022)
+            { id: 113, unit: 1, part: 'A', text: "Continuing guarantee", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 114, unit: 1, part: 'A', text: "Gratuitous bailment", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 115, unit: 1, part: 'B', text: "Distinguish between the contract of indemnity and the contract of guarantee.", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 116, unit: 1, part: 'C', text: "Mr. Suraj stands as a surety for the good conduct of Ms. Latha who is employed in a bank. Latha misappropriates some moneys by the bank excuses her without informing Suraj about Latha's misconduct. Latha again misappropriates. Is Suraj liable to the bank?", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+
+
+            { id: 31, unit: 2, part: 'A', text: "Substituted agent.", years: "August 2021", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 32, unit: 2, part: 'B', text: "Discuss the different modes in which the authority of an agent may be terminated.", years: "August 2021, January 2011", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 33, unit: 2, part: 'A', text: "Delegation of Authority.", years: "December 2020, July/August 2019", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 34, unit: 2, part: 'B', text: "Discuss the rule an agent shall not delegate his authority.", years: "December 2020", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 35, unit: 2, part: 'C', text: "'X' helds a lease from Y, terminable on 3 months' notice. 'Z' an authorized person gives a notice of termination to 'X'. Can the notice be ratified by Y.", years: "December 2020, July/August 2019", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 36, unit: 2, part: 'A', text: "Universal Agent.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 37, unit: 2, part: 'B', text: "What is Contract of Agency? What are the essentials of relationship of Agency?", years: "August/September 2019, December 2019", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 38, unit: 2, part: 'C', text: "'A' enters into a contract with 'B' for buying B's car as agents for 'C' without B's authority. B repudiates the contract before 'C' comes to know it. 'C' subsequently ratifies the contract and gives to enforce it. Advise B.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 39, unit: 2, part: 'C', text: "'P' gives authority to 'A' to sell 'P's land to pay himself, out of the proceeds, the debt due to him from 'P'. Subsequently 'P' revokes the Authority given to 'A'. Advise 'P'.", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 40, unit: 2, part: 'B', text: "What is 'Agency by Ratification'? Examine the Condition of a Valid Ratification with Illustrations.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 41, unit: 2, part: 'C', text: "A directs B his agent to buy a certain house from him. B tells A that, it can't be bought as it is already sold out, but buys the house for himself. A came to know about the fraud committed by B. Can A compel B to sell the house to himself? Decide.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 75, unit: 2, part: 'B', text: "Discuss creation of agency and state the kinds of agent.", years: "January 2011", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 88, unit: 2, part: 'B', text: "Who is an agent? State and explain the duties of an agent.", years: "December 2014", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 89, unit: 2, part: 'E', text: "Sub agent.", years: "December 2014", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            // New questions from MDU 2015 - Contract II Section
+            { id: 104, unit: 2, part: 'B', text: "Who is an agent ? State and explain the duties of an agent.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 105, unit: 2, part: 'E', text: "Sub agent.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            // Consolidated from c2.jpg & c7.jpg (December 2021) and c3.jpg (November 2022)
+            { id: 117, unit: 2, part: 'A', text: "Agency by ratification", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 118, unit: 2, part: 'A', text: "Irrevocable agency", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 119, unit: 2, part: 'B', text: "What is a contract of agency and what are the essentials of relationship of agency ?", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 120, unit: 2, part: 'C', text: "A asked B, an expert driver, to drive his car in order to demonstrate for sale. B drove it unskillfully and then collided it with a tree. Is B liable for loss ?", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            // Added from c4.jpg (April/May 2022)
+            { id: 121, unit: 2, part: 'A', text: "Termination of agency", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 122, unit: 2, part: 'B', text: "What are the various ways in which the relation of agency arises ?", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 123, unit: 2, part: 'C', text: "P allows his agent to purchase goods for him on credit from T, and pays for them. On one occasion he pays his agent to purchase the money and purchased goods on credit from T. Whether T can recover the price of the goods from P? Decide.", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+
+
+            { id: 42, unit: 3, part: 'A', text: "Future goods.", years: "August 2021", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 43, unit: 3, part: 'A', text: "Caveat Emptor.", years: "August 2021, August/September 2018, July/August 2019, January 2011", repetitions: 4, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 44, unit: 3, part: 'C', text: "'G' Contracts with H to buy 50 easy chairs of a certain quality. H delivers 25 chairs of the type agreed upon and 25 chairs of some other type. Does 'G' reject the chairs?", years: "August 2021", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 45, unit: 3, part: 'A', text: "Hire Purchase Agreement.", years: "December 2020", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 46, unit: 3, part: 'B', text: "Define 'Condition' and 'Warranty'. Distinguish between condition and warranties.", years: "December 2020, January 2011", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 47, unit: 3, part: 'B', text: "Explain the Nature of a contract of sale of goods and bring out clearly the distinction between a sale and an agreement to sell.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 48, unit: 3, part: 'C', text: "'W' of Agra ordered certain specified goods from 'B' of Bombay. 'B' sends the goods, not ordered, along with them. What should 'B' do?", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 49, unit: 3, part: 'A', text: "Auction Sale.", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 50, unit: 3, part: 'B', text: "What are the Implied Conditions and Warranties in a Contract of Sale?", years: "August/September 2018, February 2022", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 90, unit: 3, part: 'B', text: "Define and distinguish between a 'condition' and 'warranty'. Under what circumstances, can a breach of condition be treated as a breach of warranty?", years: "December 2014", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 91, unit: 3, part: 'B', text: "Define sale and agreement to sale. Point out the differences between the two. When agreement to sell becomes sale?", years: "December 2014", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 92, unit: 3, part: 'E', text: "Caveat emptor.", years: "December 2014", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            // New questions from MDU 2015 - Contract II Section
+            { id: 106, unit: 3, part: 'B', text: "Define and distinguish between a 'condition' and 'warranty'. Under what circumstances, can a breach of condition be treated as a breach of warranty?", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 107, unit: 3, part: 'B', text: "Define sale and agreement to sale. Point out the differences between the two. When agreement to sell becomes sale?", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 108, unit: 3, part: 'E', text: "Caveat emptor.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            // Consolidated from c2.jpg & c7.jpg (December 2021) and c3.jpg (November 2022)
+            { id: 124, unit: 3, part: 'A', text: "F.O.B. contracts", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 125, unit: 3, part: 'A', text: "Agreement to sell", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 126, unit: 3, part: 'A', text: "Hire-purchase agreement", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 127, unit: 3, part: 'B', text: "Briefly explain the conditions and warranties implied by law in a contract for the sale of goods.", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 128, unit: 3, part: 'C', text: "A contracts to sell B a piece of silk. B thinks that it is Indian silk. A knows that B thinks so, but knows that it is not Indian silk. A does not correct B's impression. B afterwards discovers that it is not Indian silk. Can he repudiate the contract?", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            // Added from c4.jpg (April/May 2022)
+            { id: 129, unit: 3, part: 'A', text: "Different types of goods", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 130, unit: 3, part: 'B', text: "Discuss the implied conditions and warranties in a contract for the sale of goods.", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 131, unit: 3, part: 'C', text: "At a sale by auction without reserve, the auctioneer is instructed not to sell for less than a certain price. The auctioneer accepts the highest bona fide bid which, however, is lower than the reserve price. Is the sale valid, if so, is the auctioneer liable to compensate the principal seller?", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 132, unit: 3, part: 'C', text: "A bought a horse from B. A wanted to enter the horse in a race. A did not inform the same to B. Turns out the horse was not capable of running a race on account of being lame - Can B made liable for defect? Decide.", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+
+
+            { id: 51, unit: 4, part: 'B', text: "When is a seller deemed to be an unpaid seller of goods and what are his rights?", years: "August 2021, January 2011", repetitions: 2, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 52, unit: 4, part: 'C', text: "Mohan Lal delivers diamonds to Neel Kamal on sale or return basis. Neel Kamal delivers the diamonds to Om Prakash on sale or return. An unknown person takes away the diamonds from Om Prakash. Can Mohan Lal file a case against Neel Kamal for the price of the diamonds?", years: "August 2021", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 53, unit: 4, part: 'A', text: "Unpaid Seller.", years: "December 2020, August/September 2019, July/August 2019, December 2019", repetitions: 4, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 54, unit: 4, part: 'C', text: "A sold 100 quintals of groundnut oil to B. Before it could be delivered to 'B' the Govt. of India requisitioned the whole quantity lying with 'A' in public interest. 'B' wants to sue 'A' for breach of contract. Advise B.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 76, unit: 4, part: 'A', text: "Risk primafacie passes with title Comment.", years: "January 2011", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 93, unit: 4, part: 'B', text: "Explain the rights of an unpaid seller.", years: "December 2014", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            // New questions from MDU 2015 - Contract II Section
+            { id: 109, unit: 4, part: 'B', text: "Explain the rights of an unpaid seller.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            // Consolidated from c2.jpg & c7.jpg (December 2021) and c3.jpg (November 2022)
+            { id: 133, unit: 4, part: 'A', text: "Nemo dat quad no habet", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 134, unit: 4, part: 'C', text: "A sold 100 quintals of ground nut oil to B. Before it could be delivered to B, the Government of India required the whole quality lying with A in public interest. B wants to sue A for breach of contract. Advice B.", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            // Added from c4.jpg (April/May 2022)
+            { id: 135, unit: 4, part: 'A', text: "Right of stoppage in transit", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 136, unit: 4, part: 'C', text: "Smt. Tara placed an order with B & Co. requesting the company to send the goods by sea. B & Co. took a bill of lading in the name of Tara and sent it to the company own agent. The goods were, however destroyed in the course of the voyage. Here, who has to bear the loss?", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            // Added from c8.jpg (November 2020)
+            { id: 137, unit: 4, part: 'C', text: "Mr. John delivery his horse to Mr. Bose on 'sale or return within a week'. The horse dies three days after it had been delivered while in the possession of Bose. Can John recover the price? If so, under what circumstances?", years: "November 2020", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+
+
+            { id: 55, unit: 5, part: 'A', text: "Dormant Partner.", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 56, unit: 5, part: 'A', text: "Dissolution of Partnership.", years: "August 2021, January 2011", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            { id: 57, unit: 5, part: 'B', text: "What is the legal position of a minor partner in a firm?", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 58, unit: 5, part: 'C', text: "Raju, a partner of a firm, borrows money on his own credit by giving his own promissory note for the same, but he subsequently uses the proceeds of the note in the partnership concern of his own free will without any reference to the lender to do so. Is the firm liable for the loan?", years: "August 2021", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 59, unit: 5, part: 'A', text: "Sleeping Partner.", years: "December 2020", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 60, unit: 5, part: 'A', text: "LLP.", years: "December 2020, August 2021", repetitions: 2, relatedSubTopic: "Limited Liability Partnership (LLP)" },
+            { id: 61, unit: 5, part: 'A', text: "Reconstitution of Firm.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 62, unit: 5, part: 'B', text: "“A partner is the agent of the firm for the purpose of the business of the firm”. Explain.", years: "August/September 2019", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 63, unit: 5, part: 'B', text: "How Partnership Firms are registered? What are the Consequences of Registration and Non-Registration of Partnership Firm?", years: "July/August 2019", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 64, unit: 5, part: 'A', text: "Partnership at Will.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 65, unit: 5, part: 'A', text: "Registration of a Firm.", years: "August/September 2018, January 2011", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            { id: 66, unit: 5, part: 'C', text: "X an active partner of a firm with Y and Z. X retires without giving a public notice. Whether X is liable to the creditors to a loan sanctioned after his retirement? Decide.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 67, unit: 5, part: 'C', text: "An unregistered partnership firm borrows Rs. 1,00,000/- from X the firm failed to repay it within time. Now that can Mr. X do to recover the amount? Advise.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 68, unit: 5, part: 'A', text: "Minor's Contract.", years: "August/September 2018", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 77, unit: 5, part: 'B', text: "Define Partnership. Discuss the various types of partners.", years: "January 2011", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 78, unit: 5, part: 'A', text: "What is meant by dissolution of a firm ? Under what circumstances a firm may be dissolved ?", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 79, unit: 5, part: 'B', text: "Examine the rights and liabilities of incoming and outgoing partners.", years: "February 2022", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 80, unit: 5, part: 'A', text: "Describe the doctrine of 'Liability of holding out' ?", years: "December 2019", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 94, unit: 5, part: 'B', text: "Under what circumstances a partnership firm may be dissolved by the intervention of the court.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 95, unit: 5, part: 'E', text: "Minor's status in a partnership firm.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 96, unit: 5, part: 'E', text: "Doctrine of Holding out.", years: "December 2014", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            // New questions from MDU 2015 - Contract II Section
+            { id: 110, unit: 5, part: 'B', text: "Under what circumstances a partnership firm may be dissolved by the intervention of the court.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 111, unit: 5, part: 'E', text: "Minor's status in a partnership firm.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 112, unit: 5, part: 'E', text: "Doctrine of Holding out.", years: "MDU 2015", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            // Consolidated from c2.jpg & c7.jpg (December 2021) and c3.jpg (November 2022)
+            { id: 138, unit: 5, part: 'A', text: "Partnership at will", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            { id: 139, unit: 5, part: 'A', text: "Minor as a partner", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            { id: 140, unit: 5, part: 'C', text: "Mohan and Ravi were partners under an agreement which provided that partnership could be terminated by mutual arrangement only. Mohan alone wants to terminate the partnership. Can Mohan do so?", years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            { id: 141, unit: 5, part: 'B', text: '"The law of partnership is nothing but an extension of the law of principal and agent" . Explain .', years: "November 2022, December 2021", repetitions: 2, relatedSubTopic: "Contract of Partnership" },
+            // Added from c4.jpg (April/May 2022)
+            { id: 142, unit: 5, part: 'A', text: "Characteristics of partnership", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 143, unit: 5, part: 'A', text: "Rule in Garner v. Murray", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 144, unit: 5, part: 'B', text: '"A partner is the agent of the firm for the purposes of the business of firm" Examine .', years: "April/May 2022", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 145, unit: 5, part: 'C', text: "Alex, a publisher, agrees to publish at his own expense, a book written by Sridhar and to pay Sridhar half the net profits. Do Alex and Sridhar constitute partnership?", years: "April/May 2022", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            // Added from c8.jpg (November 2020)
+            { id: 146, unit: 5, part: 'A', text: "Kinds of Partners", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 147, unit: 5, part: 'A', text: "Limited Liability Partnership", years: "November 2020", repetitions: 1, relatedSubTopic: "Limited Liability Partnership (LLP)" },
+            { id: 148, unit: 5, part: 'B', text: "Discuss the different methods of dissolution of partnership firm .", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 149, unit: 5, part: 'C', text: "Mr. Asok stands as a surety for the good conduct of Mr. Balu who is employed in a bank. Balu misappropriates some money but the bank excuses him without informing Asok about Balu's misconduct. Balu again misappropriates. Is Asok liable to the bank?", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 150, unit: 5, part: 'C', text: "'P', 'Q' and 'R' are partners. R is a sleeping partner. He retires without giving a public notice. Will R liable for the subsequent debts incurred by P and Q?", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            // Added from contract 1.jpg (August 2023)
+            { id: 151, unit: 5, part: 'A', text: "Property of the firm", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 152, unit: 5, part: 'B', text: "Define contract of partnership and explain the essential elements for formation of a partnership.", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+
+
+            // Added from c8.jpg (November 2020) - Unit 1 - these are likely already in data, re-verify
+            { id: 153, unit: 1, part: 'A', text: "Contract of Bailment", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" }, // Similar to id 16, 29 - check for repetition
+            { id: 154, unit: 1, part: 'A', text: "Rights of Pawnee", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" }, // Similar to id 21 - check for repetition
+            { id: 155, unit: 1, part: 'A', text: "Rights of Surety against co-sureties", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" }, // Similar to id 10 - check for repetition
+            { id: 156, unit: 1, part: 'B', text: "Define contract of indemnity and guarantee and also distinguish.", years: "November 2020", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" }, // Similar to id 28 - check for repetition
+            // Consolidated from contract 1.jpg (August 2023)
+            { id: 157, unit: 1, part: 'A', text: "General Lien", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" }, // Was Undated/Latest, and duplicate of 166. Keeping 157.
+            { id: 158, unit: 1, part: 'B', text: "What are the rights of surety against the creditor, prificipal debtor and co-sureties ?", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" }, // Was Undated/Latest
+            { id: 159, unit: 1, part: 'C', text: "B owes to C a debt guaranteed by a. The debt becomes payable. C does not sue B for a year after the debt has become payable. Is A discharged from his suretyship?", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" }, // Was Undated/Latest
+            // Added from c8.jpg (November 2020) - Unit 2
+            { id: 160, unit: 2, part: 'A', text: "Modes of creation of agency", years: "November 2020", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" }, // Similar to id 75 - check repetition
+            { id: 161, unit: 2, part: 'B', text: "What are the rights and duties of an agent?", years: "November 2020", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" }, // New long answer
+            // Added from c8.jpg (November 2020) - Unit 3
+            { id: 162, unit: 3, part: 'A', text: "Hire Purchase Agreement", years: "November 2020", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" }, // Similar to id 45 - check repetition
+            { id: 163, unit: 3, part: 'B', text: "Explain the importance of express and implied conditions and warranties in a contract of sale of goods.", years: "November 2020", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" }, // Similar to id 50 - check repetition
+            { id: 164, unit: 3, part: 'C', text: "A, a doctor, by the exercise of undue influence, persuades his patient 'B' to sel! a valuable diamond to him at a very low price. A obtaining possession of the diamond and pledges it with C. Is this a valid pledge?", years: "November 2020", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" }, // New problem, seems to involve pledge context
+            // Consolidated from contract 1.jpg (August 2023)
+            { id: 165, unit: 1, part: 'A', text: "Submitted Agent", years: "August 2023", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" }, // Was Undated/Latest
+            { id: 167, unit: 1, part: 'B', text: "State the meaning of Bailment and discuss the rights and duties of Bailee.", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" }, // Was Undated/Latest
+            { id: 168, unit: 3, part: 'B', text: "Define conditions and warranties and and explain the implied conditions and implied warranties.", years: "August 2023", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" }, // Was Undated/Latest
+            { id: 169, unit: 4, part: 'C', text: "A enters into a contract with B to supply wheat to be delivered in three monthly installments of about 100 tons each, and supplied only 30 tons in the first month. The buyer refuses to accept delivery - Examine the rights of the parties.", years: "August 2023", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." }, // Was Undated/Latest
+
+            // New questions from Contract 1.jpg (August 2023) that were similar to existing ones but represent new occurrences from that specific paper
+            { id: 170, unit: 1, part: 'A', text: "Pledge by Non-owner.", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Bailment and Pledge" },
+            { id: 171, unit: 1, part: 'A', text: "Rights of Indemnity Holder", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Indemnity and Contract of Guarantee" },
+            { id: 172, unit: 5, part: 'A', text: "Minor as a partner", years: "August 2023", repetitions: 1, relatedSubTopic: "Contract of Partnership" },
+            { id: 173, unit: 3, part: 'A', text: "Caveat Emptor", years: "August 2023", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+            { id: 174, unit: 4, part: 'A', text: "Unpaid Seller", years: "August 2023", repetitions: 1, relatedSubTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach." },
+            { id: 175, unit: 2, part: 'C', text: "P allows his agent to purchase goods for him on credit from T , and pays for them . On one occasion he pays his agent to purchase the goods . The agent misappropriate the money and purchased goods on credit from T . Whether T can recover the price of the goods from P ? Decide .", years: "August 2023", repetitions: 1, relatedSubTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency" },
+            { id: 176, unit: 3, part: 'C', text: "A bought a horse from B . A wanted to enter the horse in a race . A did not inform the same to B . Turns out the horse was not capable of running a race on account of being lame - Can B made liable for defect ? Decide .", years: "August 2023", repetitions: 1, relatedSubTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements" },
+        ],
+        units: {
+            1: {
+                title: "Indemnity, Guarantee, Bailment & Pledge",
+                summary: "This unit focuses on special types of contracts. It covers indemnity (a promise to save another from loss), guarantee (a promise to perform the promise of a third person in case of his default), bailment (delivery of goods for a purpose), and pledge (bailment of goods as security for payment of a debt).",
+                content: [
+                    {
+                        subTopic: "Contract of Indemnity and Contract of Guarantee",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Contract of Indemnity (Section 124, Indian Contract Act, 1872):</h3>
+                            <p class="text-stone-700 mb-2">A **Contract of Indemnity** is a contract by which one party promises to save the other from loss caused to him by the conduct of the promisor himself, or by the conduct of any other person. It's a bilateral contract where the liability of the indemnifier is primary.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights of Indemnity Holder (Section 125):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>All damages which he may be compelled to pay in any suit in respect of any matter to which the promise to indemnify applies.</li>
+                                <li>All costs which he may be compelled to pay in any such suit if he did not contravene the orders of the indemnifier, and acted as a prudent person would.</li>
+                                <li>All sums which he may have paid under the terms of any compromise of any such suit, if the compromise was not contrary to the orders of the indemnifier, and was one which a prudent person would have made.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Liability of the Indemnifier:</h4>
+                            <p class="text-stone-700 mb-2">The indemnifier's liability arises only when the loss occurs. It is contingent upon the happening of a loss.</p>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Contract of Guarantee (Section 126, Indian Contract Act, 1872):</h3>
+                            <p class="text-stone-700 mb-2">A **Contract of Guarantee** is a contract to perform the promise, or discharge the liability, of a third person in case of his default. It involves three parties: **Principal Debtor**, **Creditor**, and **Surety**.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Essential Characteristics:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Tripartite Agreement:</strong> Involves Principal Debtor, Creditor, and Surety.</li>
+                                <li><strong>Primary Liability of Principal Debtor:</strong> The surety's liability is secondary and arises only upon the default of the principal debtor.</li>
+                                <li><strong>Existence of Debt:</strong> There must be a primary enforceable debt or duty whose performance is guaranteed.</li>
+                                <li><strong>Consideration:</strong> Any promise made for the benefit of the principal debtor is sufficient consideration for the surety.</li>
+                                <li><strong>Not Based on Misrepresentation or Concealment:</strong> The guarantee must be obtained without misrepresentation or fraudulent concealment.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Distinction between Indemnity and Guarantee:</h4>
+                            <div class="overflow-x-auto my-2">
+                                <table class="min-w-full bg-white border border-stone-200 rounded-lg">
+                                    <thead class="bg-stone-50">
+                                        <tr>
+                                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-stone-600">Feature</th>
+                                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-stone-600">Contract of Indemnity</th>
+                                            <th class="py-2 px-4 border-b text-left text-sm font-semibold text-stone-600">Contract of Guarantee</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr><td class="py-2 px-4 border-b text-sm text-stone-700"><strong>Parties</strong></td><td class="py-2 px-4 border-b text-sm text-stone-700">Two (Indemnifier, Indemnified)</td><td class="py-2 px-4 border-b text-sm text-stone-700">Three (Principal Debtor, Creditor, Surety)</td></tr>
+                                        <tr><td class="py-2 px-4 border-b text-sm text-stone-700"><strong>Liability</strong></td><td class="py-2 px-4 border-b text-sm text-stone-700">Indemnifier's liability is primary and independent</td><td class="py-2 px-4 border-b text-sm text-stone-700">Surety's liability is secondary and contingent</td></tr>
+                                        <tr><td class="py-2 px-4 border-b text-sm text-stone-700"><strong>Purpose</strong></td><td class="py-2 px-4 border-b text-sm text-stone-700">To protect against loss</td><td class="py-2 px-4 border-b text-sm text-stone-700">To secure the performance of a third person's promise/liability</td></tr>
+                                        <tr><td class="py-2 px-4 border-b text-sm text-stone-700"><strong>Nature</strong></td><td class="py-2 px-4 border-b text-sm text-stone-700">Can be implied by law</td><td class="py-2 px-4 border-b text-sm text-stone-700">Must be express</td></tr>
+                                        <tr><td class="py-2 px-4 border-b text-sm text-stone-700"><strong>Action</strong></td><td class="py-2 px-4 border-b text-sm text-stone-700">Indemnifier cannot sue third parties in his own name</td><td class="py-2 px-4 border-b text-sm text-stone-700">Surety, upon payment, can sue the Principal Debtor</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Kinds of Guarantee:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Specific Guarantee:</strong> Relates to a single transaction.</li>
+                                <li><strong>Continuing Guarantee (Section 129):</strong> Extends to a series of transactions.</li>
+                                <li><strong>Retrospective Guarantee:</strong> For an existing debt.</li>
+                                <li><strong>Prospective Guarantee:</strong> For a future debt.</li>
+                                <li><strong>Fidelity Guarantee:</strong> For the good conduct or honesty of a person.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights of Surety (Sections 140-141, 145-147):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Rights against Principal Debtor:</strong> Right of Subrogation (Section 140), Right to Indemnity (Section 145).</li>
+                                <li><strong>Rights against Creditor:</strong> Right to Securities (Section 141), Right to Set-off.</li>
+                                <li><strong>Rights against Co-Sureties (Sections 146-147):</strong> Right to Contribution (Section 146), Release of one co-surety does not discharge others (Section 147).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Discharge of Surety (Sections 133-139):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>By Revocation (Sections 130-131):</strong> For a continuing guarantee, by notice or death of surety (for future transactions).</li>
+                                <li><strong>By Conduct of Creditor:</strong> Variance in terms (Section 133), Release of principal debtor (Section 134), Compounding with debtor (Section 135), Creditor losing his security (Section 141).</li>
+                                <li><strong>By Invalidity of Contract:</strong> Misrepresentation, fraud, or concealment (Sections 142-143).</li>
+                                <li><strong>By Novation.</strong></li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Contract of Indemnity:</strong> In <strong>Gajanan Moreshwar Parelkar v. Moreshwar Madan Mantri (1942)</strong>, the Bombay High Court held that the indemnity holder can compel the indemnifier to place him in a position to meet the liability even before suffering actual damage.</li>
+                                <li><strong>Discharge of Surety (Variance):</strong> The Supreme Court in <strong>M.S. Anirudhan v. The Thomco's Bank Ltd. (1963)</strong> emphasized that any material alteration in the terms of the contract between the creditor and the principal debtor, made without the surety's consent, discharges the surety.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Live Example for Unit-I: Construction at Mahatma Gandhi Law College",
+                        details: `
+                            <p class="text-stone-700 mb-2">Let's imagine Mahatma Gandhi Law College is undergoing a major expansion. Chairman Govardhan and Principal Srinivas plan to construct a state-of-the-art academic block.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Scenario:</h4>
+                            <p class="text-stone-700 mb-2">Chairman Govardhan, on behalf of Mahatma Gandhi Law College (MGLC), contracts with "Bhumi Builders Ltd." for the construction of the new academic block. MGLC requires certain specialized machinery for the construction, which Bhumi Builders doesn't own. They approach "Bharat Equipments Pvt. Ltd." to lease the necessary machinery. Bharat Equipments agrees but requires a guarantee for the timely return and proper maintenance of the machinery, and for any damage caused.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Application of Concepts:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Contract of Indemnity (MGLC & Bhumi Builders):</strong> MGLC includes an **indemnity clause** stating Bhumi Builders will indemnify MGLC against losses from site accidents or delays due to negligence. If a student is injured due to Bhumi Builders' negligence, and MGLC is sued, Bhumi Builders covers the losses. This aligns with <strong>Gajanan Moreshwar Parelkar v. Moreshwar Madan Mantri</strong>.</li>
+                                <li><strong>Contract of Guarantee (Bharat Equipments, Bhumi Builders & Satyam Sir):s</strong> Bharat Equipments leases equipment to Bhumi Builders. Contract Law Lecturer Satyam Sir (Surety) guarantees to Bharat Equipments (Creditor) that if Bhumi Builders (Principal Debtor) defaults, he will be liable. If Satyam Sir pays, he has the **right of subrogation** (Section 140) and **right to indemnity** (Section 145) against Bhumi Builders. If Bharat Equipments and Bhumi Builders extend the lease without Satyam Sir's knowledge, he's discharged under **Section 133 (Variance in terms)**, as per <strong>M.S. Anirudhan v. The Thomco's Bank Ltd.</strong></li>
+                                <li><strong>Contract of Bailment (Bharat Equipments & Bhumi Builders):</strong> The lease of scaffolding from Bharat Equipments (Bailor) to Bhumi Builders (Bailee) is a Bailment. Bhumi Builders must take **reasonable care** (Section 151). If equipment is damaged due to their negligence or used improperly, they are liable, aligning with <strong>State of Gujarat v. Memon Mahomed Haji Hasam</strong>.</li>
+                                <li><strong>Pledge (Bhumi Builders & Lender Bank):</strong> Bhumi Builders pledges heavy machinery to "Apex Bank" for a loan. If Bhumi Builders pledged a concrete mixer obtained under a voidable contract (not yet rescinded), the pledge to Apex Bank (acting in good faith) might be valid under **Section 178A**, illustrating a **Pledge by Non-Owner**.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Contract of Bailment and Pledge",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Contract of Bailment (Section 148, Indian Contract Act, 1872):</h3>
+                            <p class="text-stone-700 mb-2">A **Bailment** is the delivery of goods by one person to another for some purpose, upon a contract that they shall, when the purpose is accomplished, be returned or otherwise disposed of according to the directions of the person delivering them.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Essential Requisites:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Delivery of Goods:</strong> Actual or constructive.</li>
+                                <li><strong>Specific Purpose:</strong> For a definite purpose.</li>
+                                <li><strong>Return/Disposal:</strong> Goods to be returned or disposed of as per bailor's instructions.</li>
+                                <li><strong>Contract:</strong> Based on an agreement (express or implied).</li>
+                                <li><strong>Ownership vs. Possession:</strong> Only possession is transferred, not ownership.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Kinds of Bailment:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>On the basis of Reward:</strong> Gratuitous Bailment, Non-Gratuitous Bailment.</li>
+                                <li><strong>On the basis of Purpose:</strong> For Bailor's benefit, For Bailee's benefit, For mutual benefit.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights and Duties of Bailor and Bailee:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Bailor's Duties:</strong> To disclose faults (Section 150), bear expenses (Section 158), indemnify bailee for defective title (Section 164), receive back goods.</li>
+                                <li><strong>Bailee's Duties:</strong> Take reasonable care (Section 151), not make unauthorized use (Section 154), not mix goods (Sections 155-157), return goods (Section 160), return accretion (Section 163).</li>
+                                <li><strong>Bailee's Rights:</strong> Claim expenses (Section 158), particular lien (Section 170), general lien (Section 171), interpleader suit (Section 167), compensation (Section 164).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Termination of Bailment:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>On expiry of period/purpose, bailee's inconsistent act (Section 153), death of party (gratuitous), notice by bailor (gratuitous).</li>
+                            </ul>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Pledge (Section 172, Indian Contract Act, 1872):</h3>
+                            <p class="text-stone-700 mb-2">A **Pledge** is the bailment of goods as security for payment of a debt or performance of a promise. Bailor is **Pawnor**, bailee is **Pawnee**.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights and Duties of Pawnor and Pawnee:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Pawnee's Rights:</strong> Retain goods (Section 173), receive extraordinary expenses (Section 175), sue pawnor or sell goods after notice (Section 176).</li>
+                                <li><strong>Pawnee's Duties:</strong> Take reasonable care (Section 151), not unauthorized use, return goods upon repayment, not mix goods.</li>
+                                <li><strong>Pawnor's Rights:</strong> Redeem goods (Section 177), receive surplus from sale (Section 176), have goods returned.</li>
+                                <li><strong>Pawnor's Duties:</strong> Repay debt, disclose faults.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Pledge by Non-Owner (Sections 178, 178A, 179):</h4>
+                            <p class="text-stone-700 mb-2">Generally, only owner can pledge. Exceptions:</p>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Pledge by a mercantile agent (Section 178).</li>
+                                <li>Pledge by person in possession under voidable contract (Section 178A).</li>
+                                <li>Pledge by co-owner in possession (Section 178).</li>
+                                <li>Pledge by seller/buyer in possession (Section 30 of Sale of Goods Act).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Bailment (Standard of Care):</strong> <strong>State of Gujarat v. Memon Mahomed Haji Hasam (1967)</strong>: Bailee must take such care as a prudent person would.</li>
+                                <li><strong>Pledge by Non-Owner (Mercantile Agent):</strong> <strong>Morvi Mercantile Bank Ltd. v. Union of India (1965)</strong>: Conditions for valid pledge by mercantile agent.</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            2: {
+                title: "Contract of Agency",
+                summary: "This unit deals with the relationship between a principal and an agent. It covers the creation of agency, the rights and duties of both the agent and principal, the scope of an agent's authority, and the termination of the agency relationship.",
+                content: [
+                    {
+                        subTopic: "Definition, Creation, Rights and Duties, Delegation, Liability, and Termination of Agency",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Definition of Agent (Section 182, Indian Contract Act, 1872):</h3>
+                            <p class="text-stone-700 mb-2">An **agent** is a person employed to do any act for another, or to represent another in dealings with third persons. The person for whom such act is done, or who is so represented, is called the **principal**.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Creation of Agency:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Express Agreement (Section 187):</strong> Oral or written.</li>
+                                <li><strong>Implied Agreement (Section 187):</strong> By Conduct, By Necessity (Section 189), By Estoppel (Section 237).</li>
+                                <li><strong>By Ratification (Sections 196-200):</strong> Subsequent approval of an unauthorized act. Conditions for valid ratification apply.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights and Duties of Agent (Sections 211-225):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Agent's Duties:</strong> Conduct business according to principal's directions (Section 211), use diligence and skill (Section 212), render accounts (Section 213), communicate (Section 214), not deal on own account (Sections 215-216), not make secret profits.</li>
+                                <li><strong>Agent's Rights:</strong> Remuneration (Section 219), retainer (Section 217), lien (Section 221), indemnity (Section 222), compensation (Section 225).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Delegation of Authority (Sections 190-195):</h4>
+                            <p class="text-stone-700 mb-2">General rule: *Delegatus non potest delegare* (a delegate cannot further delegate). Exceptions exist (e.g., custom, necessity, ministerial acts, express permission). Sub-agent (Section 191) or substituted agent (Section 194).</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Personal Liability of Agent (Sections 230-238):</h4>
+                            <p class="text-stone-700 mb-2">Generally not liable for contracts made on behalf of a named principal. Exceptions: foreign principal, undisclosed principal, principal cannot be sued, agent contracts personally, agent acts without authority, agent agrees to be personally liable.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Relations of Principal and Agent with Third Parties (Sections 226-238):</h4>
+                            <p class="text-stone-700 mb-2">Contracts bind principal (Section 226). Principal liable for agent's fraud/misrepresentation (Section 238).</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Termination of Agency (Sections 201-210):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Act of Parties:</strong> Revocation by principal (Section 203), renunciation by agent (Section 206), agreement.</li>
+                                <li><strong>Operation of Law:</strong> Completion of business (Section 201), expiry of time (Section 201), death/insanity (Section 201), insolvency of principal (Section 201), destruction of subject matter.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Agency by Ratification:</strong> <strong>S. N. R. Sundararajulu Naidu v. The Commissioner of Income Tax, Madras (1963)</strong>: Ratification relates back to the date of the agent's act.</li>
+                                <li><strong>Delegation of Authority:</strong> <strong>John E. v. V.P. Madhavan (1987)</strong>: Supports the general rule against delegation.</li>
+                                <li><strong>Personal Liability of Agent:</strong> <strong>Premabhai Mohanlal v. Union of India (1975)</strong>: Agent is personally liable if principal's name is not disclosed.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Live Example for Unit-II: Procuring Technology for Mahatma Gandhi Law College",
+                        details: `
+                            <p class="text-stone-700 mb-2">Principal Srinivas of Mahatma Gandhi Law College (MGLC) wants to modernize the college's digital infrastructure by implementing a new integrated software system for administration and learning management.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Scenario:</h4>
+                            <p class="text-stone-700 mb-2">Principal Srinivas (Principal) authorizes Contract Law Lecturer Satyam Sir (Agent) to act on behalf of MGLC to research, negotiate, and finalize a contract with a suitable software vendor for the new system. Satyam Sir is given a broad mandate but specific budget limits.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Application of Concepts:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Creation of Agency (Express and Implied):</strong> Principal Srinivas's letter of authorization creates an **express agency**. Satyam Sir's interactions with vendors, introduced by Srinivas, create an **implied agency** by conduct. If Satyam Sir signs a provisional agreement exceeding budget, and Srinivas approves it, it's **ratification** (Section 196), making it binding from signing, aligning with <strong>S. N. R. Sundararajulu Naidu</strong>.</li>
+                                <li><strong>Delegation of Authority:</strong> Satyam Sir generally cannot delegate (<em>Delegatus non potest delegare</em>, per <strong>John E. v. V.P. Madhavan</strong>). He can, however, appoint Ms. Priya as a **substituted agent** (Section 194) for ministerial tasks like collecting specifications, with Srinivas's consent.</li>
+                                <li><strong>Personal Liability of Agent:</strong> Satyam Sir is generally not personally liable (Section 230). But if he contracts with "Tech Solutions" without disclosing MGLC, he could be personally liable as per <strong>Premabhai Mohanlal v. Union of India</strong>.</li>
+                                <li><strong>Termination of Agency:</strong> The agency terminates by **completion of business** (Section 201) once the software is installed. Alternatively, Srinivas could **revokes** Satyam Sir's authority (Section 203) with notice.</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            3: {
+                title: "Contract of Sale of Goods (Formation & Terms)",
+                summary: "This unit introduces the Sale of Goods Act, focusing on how a contract for the sale of goods is formed. It critically examines the distinction between conditions (essential terms) and warranties (collateral terms), and explores the doctrine of 'Caveat Emptor' (let the buyer beware) and its exceptions.",
+                content: [
+                    {
+                        subTopic: "Formation, Conditions and Warranties, Pricing, Caveat Emptor, Hire Purchase Agreements",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Contract of Sale of Goods (Section 4, Sale of Goods Act, 1930):</h3>
+                            <p class="text-stone-700 mb-2">A **contract of sale of goods** is a contract whereby the seller transfers or agrees to transfer the property in goods to the buyer for a price. It can be a sale (immediate transfer) or an agreement to sell (future transfer).</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Formation of Contract (Section 5):</h4>
+                            <p class="text-stone-700 mb-2">By offer and acceptance; can be written, oral, or implied by conduct.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Subject Matter of Sale (Sections 6-8):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Existing Goods:</strong> Specific, Ascertained, Unascertained.</li>
+                                <li><strong>Future Goods (Section 2(6)):</strong> To be manufactured/acquired.</li>
+                                <li><strong>Contingent Goods:</strong> Acquisition depends on a contingency.</li>
+                            </ul>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Conditions and Warranties (Sections 11-13):</h3>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Condition (Section 12(2)):</strong> Essential to main purpose; breach allows repudiation + damages.</li>
+                                <li><strong>Warranty (Section 12(3)):</strong> Collateral to main purpose; breach allows damages only.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Implied Conditions (Sections 14-17):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>As to title (Section 14(a)), sale by description (Section 15), quality/fitness for purpose (Section 16(1)), merchantability (Section 16(2)), wholesomeness, sale by sample (Section 17).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Implied Warranties:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Quiet possession (Section 14(b)), freedom from encumbrances (Section 14(c)), quality/fitness by usage of trade (Section 16(3)).</li>
+                            </ul>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Pricing (Sections 9-10):</h3>
+                            <p class="text-stone-700 mb-2">Fixed by contract, agreed manner, course of dealing, or reasonable price.</p>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Caveat Emptor:</h3>
+                            <p class="text-stone-700 mb-2">"Let the buyer beware." Buyer's responsibility for quality/fitness. Exceptions: implied conditions (Section 16), fraud, misrepresentation.</p>
+
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Hire Purchase Agreements:</h3>
+                            <p class="text-stone-700 mb-2">Bailment with option to purchase; property passes only on last installment + option exercise.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Condition as to Fitness for Purpose:</strong> <strong>Bristol Tramways etc. Carriage Co. Ltd. v. Fiat Motors Ltd. (1910)</strong>: Buyer must make purpose known and rely on seller's skill.</li>
+                                <li><strong>Caveat Emptor:</strong> <strong>K.P. R. Transports v. Dwarka Prasad (2000)</strong>: Supreme Court reiterated the doctrine and its exceptions.</li>
+                                <li><strong>Hire Purchase:</strong> <strong>Sundaram Finance Ltd. v. The State of Kerala (1966)</strong>: Distinguished hire purchase from sale as a bailment with option to purchase.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Live Example for Unit-III: Modernizing Classrooms at Mahatma Gandhi Law College",
+                        details: `
+                            <p class="text-stone-700 mb-2">Principal Srinivas and Chairman Govardhan decide to upgrade classrooms at Mahatma Gandhi Law College with new smartboards.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Scenario:</h4>
+                            <p class="text-stone-700 mb-2">MGLC places a tender for 50 interactive smartboards from "EduTech Solutions". The contract specifies compatibility with "Windows 11 and integrated AI features for lecture transcription".</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Application of Concepts:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Formation of Contract:</strong> The tender and accepted proposal form a **contract of sale of goods** (Section 4) for **future goods** (Section 6), which become ascertained upon identification.</li>
+                                <li><strong>Conditions and Warranties:</strong> The specific compatibility and AI features are **express conditions** (Section 12(2)). If breached, MGLC can reject the boards. An **implied condition as to fitness for purpose** (Section 16(1)) arises if MGLC relies on EduTech's skill for smartboards suitable for classrooms, aligned with <strong>Bristol Tramways v. Fiat Motors Ltd.</strong> An **implied warranty as to quiet possession** (Section 14(b)) ensures MGLC's uninterrupted use.</li>
+                                <li><strong>Pricing:</strong> The contract explicitly fixes the price (Section 9).</li>
+                                <li><strong>Caveat Emptor:</strong> While MGLC must inspect (Caveat Emptor), the **express and implied conditions** act as crucial exceptions, protecting MGLC if features are lacking or boards are unfit.</li>
+                                <li><strong>Hire Purchase Agreement (Alternative):</strong> MGLC could opt for a **Hire Purchase Agreement** for high-end whiteboards, retaining the option to return them before full ownership, as per <strong>Sundaram Finance Ltd. v. The State of Kerala</strong>.</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            4: {
+                title: "Sale of Goods (Property, Delivery & Rights)",
+                summary: "This unit covers the rules for transferring ownership (property) from seller to buyer. It discusses the 'nemo dat quod non habet' rule (no one can give what they do not have) and its exceptions, the rules of delivery, and the crucial rights of an unpaid seller against the goods.",
+                content: [
+                    {
+                        subTopic: "Property, Possession and Rules relating to passing of property, Sale by non-owner, Delivery of goods, Rights and duties of seller and buyer before and after sale, Rights of unpaid seller, Remedies for breach.",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Property vs. Possession:</h3>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Property:</strong> Ownership; risk generally passes with it.</li>
+                                <li><strong>Possession:</strong> Physical custody or control.</li>
+                            </ul>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Rules for Passing of Property (Sections 18-24):</h3>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Specific/Ascertained Goods (Sections 19-21):</strong> Based on intention. If not clear:
+                                    <li>In deliverable state (Section 20): Passes when contract is made.</li>
+                                    <li>Not in deliverable state (Section 21): Passes when put in deliverable state and buyer has notice.</li>
+                                    <li>To be weighed/measured (Section 22): Passes when done and buyer has notice.</li>
+                                <li><strong>Unascertained Goods (Section 23):</strong> Property passes when ascertained and appropriated.</li>
+                                <li><strong>On Approval/Sale or Return (Section 24):</strong> Passes on approval, adoption, or retention beyond reasonable time.</li>
+                            </ul>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Sale by Non-Owner – *Nemo Dat Quod Non Habet* (Section 27):</h3>
+                            <p class="text-stone-700 mb-2">"No one can give what he does not have." Buyer acquires no better title than seller.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Exceptions:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Mercantile agent (Section 27, proviso), joint owners (Section 28), person in possession under voidable contract (Section 29), seller/buyer in possession after sale (Section 30), estoppel.</li>
+                            </ul>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Delivery of Goods (Sections 31-39):</h3>
+                            <p class="text-stone-700 mb-2">Voluntary transfer of possession. Kinds: Actual, Constructive, Symbolic.</p>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Rights and Duties of Seller and Buyer:</h3>
+                            <p class="text-stone-700 mb-2">Cover payment, delivery, acceptance, examination, and remedies for breach.</p>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Rights of Unpaid Seller (Sections 45-54):</h3>
+                            <p class="text-stone-700 mb-2">Seller unpaid or negotiable instrument dishonored.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights Against the Goods:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Right of Lien (Sections 47-49):</strong> To retain possession.</li>
+                                <li><strong>Right of Stoppage in Transit (Sections 50-52):</strong> To stop goods if buyer insolvent.</li>
+                                <li><strong>Right of Re-sale (Section 54):</strong> Perishable goods, after notice, or contractually reserved.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Rights Against the Buyer Personally:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Suit for Price (Section 55)</strong>, <strong>Damages for Non-Acceptance (Section 56)</strong>.</li>
+                            </ul>
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Remedies for Breach (Sections 57-59, 61):</h3>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Buyer's Remedies:</strong> Damages for non-delivery (Section 57), specific performance (Section 58), remedy for breach of warranty (Section 59), interest.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Passing of Property (Specific Goods):</strong> <strong>Badri Prasad v. State of Madhya Pradesh (1970)</strong>: Property passes when contract is made for deliverable specific goods.</li>
+                                <li><strong>Rights of Unpaid Seller (Lien):</strong> <strong>Commissioner of Income Tax v. Hindustan Motors Ltd. (1968)</strong>: Discussed seller's lien under Section 47.</li>
+                                <li><strong>Right of Stoppage in Transit:</strong> <strong>James Finlay & Co. Ltd. v. K.C. Abdul Latif (1970)</strong>: Conditions for exercising stoppage in transit.</li>
+                            </ul>
+                        `
+                    }
+                ]
+            },
+            5: {
+                title: "Partnership & LLP",
+                summary: "This unit covers the law relating to partnerships. It includes the formation and dissolution of firms, the legal status of a minor as a partner, the effects of non-registration, and the modern concept of the Limited Liability Partnership (LLP), which combines features of a partnership and a company.",
+                content: [
+                    {
+                        subTopic: "Contract of Partnership",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Definition and Nature of Partnership (Section 4, Indian Partnership Act, 1932):</h3>
+                            <p class="text-stone-700 mb-2">**Partnership** is the relation between persons who have agreed to share the profits of a business carried on by all or any of them acting for all. It's a contractual relation and mutual agency.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Formation of Partnership:</h4>
+                            <p class="text-stone-700 mb-2">Arises from contract: agreement to carry on business, share profits, and mutual agency.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Test of Partnership (Section 6):</h4>
+                            <p class="text-stone-700 mb-2">**Mutual agency** coupled with **sharing of profits** is the true test.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Partnership and Other Associations:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Vs. Joint Hindu Family Business (status vs. contract, limited liability for coparceners).</li>
+                                <li>Vs. Company (separate legal entity, limited liability, perpetual succession).</li>
+                                <li>Vs. Co-ownership (no business, no mutual agency, no profit sharing).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Registration of Firm (Sections 58-59):</h4>
+                            <p class="text-stone-700 mb-2">**Optional**, with Registrar of Firms.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Effect of Non-Registration (Section 69):</h4>
+                            <p class="text-stone-700 mb-2">Significant disabilities: cannot sue third parties, cannot sue partners/firm, cannot claim set-off. Third parties can still sue unregistered firm.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Relations of Partners (Sections 9-17):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Duties: Common advantage, fidelity, accounts (Section 9), indemnify for fraud (Section 10).</li>
+                                <li>Rights: Share profits/losses (Section 13), interest, conduct business.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Property of Firm (Section 14):</h4>
+                            <p class="text-stone-700 mb-2">All assets brought in or acquired for firm's business, including goodwill.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Relation of Partners to Third Parties (Sections 18-30):</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Partner as Agent (Section 18): Every partner is an agent of the firm.</li>
+                                <li>Implied Authority (Section 19): Acts in usual course bind the firm. Exceptions exist (e.g., arbitration).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Kinds of Partners:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>Active, Sleeping/Dormant, Nominal, Partner by Estoppel/Holding Out (Section 28), Sub-Partner.</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Minor as Partner (Section 30):</h4>
+                            <p class="text-stone-700 mb-2">Cannot be a full partner, but can be admitted to benefits with consent. Limited liability. Must elect upon majority.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Reconstitution of Firm (Sections 31-38):</h4>
+                            <p class="text-stone-700 mb-2">Changes in partners (admission, retirement, etc.); firm's composition changes.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Dissolution of Firm (Sections 39-44):</h4>
+                            <p class="text-stone-700 mb-2">Dissolution of partnership among all partners.</p>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li>By Agreement (Section 40), Compulsory Dissolution (Section 41), Contingent Events (Section 42), By Notice (Section 43), By Court (Section 44).</li>
+                            </ul>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Case Law:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Test of Partnership:</strong> <strong>K.D. Kamath & Co. v. Commissioner of Income Tax (1971)</strong>: Mutual agency is the crucial test.</li>
+                                <li><strong>Minor as Partner:</strong> <strong>S.C. Sharma v. Commissioner of Income Tax (1962)</strong>: Clarified minor's limited liability.</li>
+                                <li><strong>Effect of Non-Registration:</strong> <strong>Loonkaran Sethia v. Ivan E. John (1977)</strong>: Emphasized disabilities of Section 69.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Limited Liability Partnership (LLP)",
+                        details: `
+                            <h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Limited Liability Partnership (LLP) (Limited Liability Partnership Act, 2008):</h3>
+                            <p class="text-stone-700 mb-2">A body corporate and separate legal entity, combining company advantages (limited liability) with partnership flexibility.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Key Features:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Separate Legal Entity</strong>, <strong>Limited Liability</strong> (to contribution), <strong>Perpetual Succession</strong>, Flexibility (via LLP Agreement), Minimum two partners, no cap on partners.</li>
+                            </ul>
+                        `
+                    },
+                    {
+                        subTopic: "Live Example for Unit-V: Formation of 'Nyaya Consultants LLP'",
+                        details: `
+                            <p class="text-stone-700 mb-2">After years of dedicated service to Mahatma Gandhi Law College, Chairman Govardhan, Principal Srinivas, and Contract Law Lecturer Satyam Sir decide to venture into a new legal consultancy business, "Nyaya Consultants."</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Scenario:</h4>
+                            <p class="text-stone-700 mb-2">Govardhan (investor), Srinivas (administrative expertise), and Satyam Sir (legal acumen) plan to form a firm for legal consultancy, especially in contract law and commercial disputes.</p>
+                            <h4 class="font-medium text-stone-800 mt-3 mb-1">Application of Concepts:</h4>
+                            <ul class="list-disc list-inside text-stone-700 ml-4">
+                                <li><strong>Contract of Partnership (Traditional):</strong> Their agreement to pool resources, share profits, and engage in mutual agency satisfies the **test of partnership** (Section 6), as per <strong>K.D. Kamath & Co. v. Commissioner of Income Tax</strong>. Initial capital and client list become **firm property** (Section 14).</li>
+                                <li><strong>Registration of Firm:</strong> Satyam Sir advises registration is **optional** but prevents disabilities under **Section 69**, as an unregistered firm cannot sue third parties or partners (per <strong>Loonkaran Sethia v. Ivan E. John</strong>). They decide to register.</li>
+                                <li><strong>Minor as Partner:</strong> Govardhan's nephew, Rohan (a student at MGLC), can be admitted to the **benefits of partnership** (Section 30). His liability is limited to his share, as clarified by <strong>S.C. Sharma v. Commissioner of Income Tax</strong>.</li>
+                                <li><strong>Implied Authority of Partners:</strong> Each partner has **implied authority** (Section 19) for normal business acts (e.g., Satyam Sir engaging counsel).</li>
+                                <li><strong>Dissolution of Firm:</strong> If Srinivas leaves and they don't find a replacement, the firm might **dissolve by agreement** (Section 40).</li>
+                                <li><strong>Limited Liability Partnership (LLP):** To limit personal liability, they consider converting to an **LLP**. "Nyaya Consultants LLP" would be a **separate legal entity**, protecting partners' personal assets, a key advantage of the LLP Act, 2008.</li>
+                            </ul>
+                        `
+                    }
+                ]
+            }
+        },
+        // State
+        state: {
+            currentView: 'dashboard',
+            activeUnit: 1,
+            currentChart: null
+        },
+    },
+
+    // Initialization
+    init() {
+        this.cacheDOM();
+        this.bindEvents();
+        this.render();
+    },
+
+    cacheDOM() {
+        this.contentArea = document.getElementById('content-area');
+        this.loader = document.getElementById('loader');
+        this.tabDashboard = document.getElementById('tab-dashboard');
+        this.tabExplorer = document.getElementById('tab-explorer');
+        this.modal = document.getElementById('question-details-modal');
+        this.modalQuestionText = document.getElementById('modal-question-text');
+        this.modalAnswerContent = document.getElementById('modal-answer-content');
+        this.llmClarificationArea = document.getElementById('llm-clarification-area');
+        this.llmClarificationLoader = document.getElementById('llm-clarification-loader');
+        this.llmClarificationText = document.getElementById('llm-clarification-text');
+        this.llmClarificationError = document.getElementById('llm-clarification-error');
+        this.askLlmButton = document.getElementById('ask-llm-button');
+
+        this.llmExamplesModal = document.getElementById('llm-examples-modal');
+        this.llmExamplesTitle = document.getElementById('llm-examples-title');
+        this.llmExamplesLoader = document.getElementById('llm-examples-loader');
+        this.llmExamplesContent = document.getElementById('llm-examples-content');
+        this.llmExamplesError = document.getElementById('llm-examples-error');
+
+        this.llmSummaryModal = document.getElementById('llm-summary-modal');
+        this.llmSummaryTitle = document.getElementById('llm-summary-title');
+        this.llmSummaryLoader = document.getElementById('llm-summary-loader');
+        this.llmSummaryContent = document.getElementById('llm-summary-content');
+        this.llmSummaryError = document.getElementById('llm-summary-error');
+
+        this.llmCaseLawModal = document.getElementById('llm-case-law-modal');
+        this.llmCaseLawTitle = document.getElementById('llm-case-law-title');
+        this.llmCaseLawLoader = document.getElementById('llm-case-law-loader');
+        this.llmCaseLawContent = document.getElementById('llm-case-law-content');
+        this.llmCaseLawError = document.getElementById('llm-case-law-error');
+    },
+
+    bindEvents() {
+        this.tabDashboard.addEventListener('click', () => this.setView('dashboard'));
+        this.tabExplorer.addEventListener('click', () => this.setView('explorer'));
+        this.askLlmButton.addEventListener('click', () => {
+            // Show the LLM clarification area first
+            this.llmClarificationArea.classList.remove('hidden');
+            const questionText = this.modalQuestionText.textContent; // Ensure we get the original question text
+            this.askLLMForClarification(questionText);
+        });
+    },
+
+    // View Management
+    setView(view) {
+        this.db.state.currentView = view;
+        this.render();
+    },
+
+    // Render Logic
+    render() {
+        this.showLoader();
+        // A small timeout to allow the loader to be visible, simulating data fetching
+        setTimeout(() => {
+            if (this.db.state.currentChart) {
+                this.db.state.currentChart.destroy();
+                this.db.state.currentChart = null;
+            }
+            this.contentArea.innerHTML = '';
+
+            this.tabDashboard.classList.toggle('active', this.db.state.currentView === 'dashboard');
+            this.tabExplorer.classList.toggle('active', this.db.state.currentView === 'explorer');
+
+            if (this.db.state.currentView === 'dashboard') {
+                this.renderDashboard();
+            } else {
+                this.renderExplorer();
+            }
+            this.hideLoader();
+        }, 250);
+    },
+
+    showLoader() {
+        this.loader.style.display = 'flex';
+        this.contentArea.style.display = 'none';
+    },
+
+    hideLoader() {
+        this.loader.style.display = 'none';
+        this.contentArea.style.display = 'block';
+    },
+
+    // Dashboard View
+    renderDashboard() {
+        const totalQuestions = this.db.questions.length;
+        const keyConcepts = this.getOverallKeyConcepts(8);
+
+        // Dynamically determine covered years
+        const allYears = new Set();
+        this.db.questions.forEach(q => {
+            q.years.split(', ').forEach(year => {
+                // Extract only the year part if it includes "MDU" or other qualifiers
+                const yearMatch = year.match(/(\d{4})/);
+                if (yearMatch) {
+                    allYears.add(yearMatch[1]);
+                }
+            });
+        });
+        // Add specific years that might not have questions but were mentioned to be covered
+        allYears.add('2023'); // August 2023
+        allYears.add('2022'); // November 2022, May 2022, April/May 2022
+        allYears.add('2021'); // Aug 2021, December 2021
+        allYears.add('2020'); // December 2020, November 2020
+        allYears.add('2019'); // August 2019, July/August 2019
+        allYears.add('2018'); // August 2018, August/September 2018
+        allYears.add('2015'); // MDU 2015
+        allYears.add('2014'); // December 2014
+        allYears.add('2011'); // January 2011
+
+
+        const yearsCovered = Array.from(allYears).sort().join(', ');
+        const numberOfYears = allYears.size;
+
+
+        const dashboardHTML = `
+            <div class="animate-fade-in">
+                <!-- Stat Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-8">
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-sm font-medium text-stone-500 truncate">Total Questions Analyzed</h3>
+                        <p class="mt-1 text-4xl font-semibold text-blue-600">${totalQuestions}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-sm font-medium text-stone-500 truncate">Exam Years Covered</h3>
+                        <p class="mt-1 text-4xl font-semibold text-blue-600">${numberOfYears}</p>
+                        <p class="text-sm text-stone-400">${yearsCovered}</p>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6">
+                        <h3 class="text-sm font-medium text-stone-500 truncate">Most Frequent Topic</h3>
+                        <p class="mt-1 text-3xl font-semibold text-blue-600">${keyConcepts.labels[0]}</p>
+                        <p class="text-sm text-stone-400">${keyConcepts.data[0]} appearances</p>
+                    </div>
+                </div>
+
+                <!-- Main Chart -->
+                <div class="bg-white rounded-lg shadow p-6">
+                    <h2 class="text-xl font-semibold mb-1">Top Recurring Concepts (Overall)</h2>
+                    <p class="text-sm text-stone-600 mb-4">This chart highlights the most frequently tested concepts across all units, giving you a clear guide on where to focus your study efforts for maximum impact.</p>
+                    <div class="chart-container">
+                        <canvas id="dashboard-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.contentArea.innerHTML = dashboardHTML;
+
+        const ctx = document.getElementById('dashboard-chart').getContext('2d');
+        this.db.state.currentChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: keyConcepts.labels,
+                datasets: [{
+                    label: 'Number of Appearances',
+                    data: keyConcepts.data,
+                    backgroundColor: 'rgba(59, 130, 246, 0.7)',
+                    borderColor: 'rgba(59, 130, 246, 1)',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                indexAxis: 'y',
+                scales: {
+                    x: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    },
+                    y: {
+                        ticks: {
+                            font: {
+                                size: 12
+                            }
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return `Appeared ${context.raw} times`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    // Explorer View
+    renderExplorer() {
+        let questionsForUnit = this.db.questions.filter(q => q.unit === this.db.state.activeUnit);
+        const unitInfo = this.db.units[this.db.state.activeUnit];
+        const keyConcepts = this.getUnitKeyConcepts(this.db.state.activeUnit);
+
+        const explorerHTML = `
+            <div class="animate-fade-in">
+                <!-- Unit Selection -->
+                <div class="flex flex-wrap gap-2 mb-6">
+                    ${Object.keys(this.db.units).map(unitId => `
+                        <button class="unit-button text-sm font-medium py-2 px-4 rounded-full border border-stone-300 bg-white hover:bg-stone-100 transition-colors ${parseInt(unitId) === this.db.state.activeUnit ? 'active' : ''}" data-unit-id="${unitId}">
+                            Unit ${unitId}
+                        </button>
+                    `).join('')}
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left Pane: Info & Chart -->
+                    <div class="lg:col-span-1 space-y-6">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-2xl font-bold text-blue-600 mb-2">Unit ${this.db.state.activeUnit}: ${unitInfo.title}</h2>
+                            <p class="text-stone-600">${unitInfo.summary}</p>
+                        </div>
+                         <div class="bg-white rounded-lg shadow p-6">
+                            <h3 class="text-lg font-semibold mb-2">Key Topics for this Unit</h3>
+                            <div class="chart-container h-64">
+                                <canvas id="unit-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Pane: Questions Table & Study Material -->
+                    <div class="lg:col-span-2 space-y-8">
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <div class="flex flex-col sm:flex-row justify-between sm:items-center mb-4 gap-4">
+                                <h2 class="text-xl font-semibold">Questions for Unit ${this.db.state.activeUnit}</h2>
+                                <input type="text" id="search-input" placeholder="🔍 Search questions..." class="w-full sm:w-64 px-3 py-2 border border-stone-300 rounded-md focus:ring-blue-500 focus:border-blue-500">
+                            </div>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-left text-sm">
+                                    <thead class="border-b text-stone-600">
+                                        <tr>
+                                            <th class="py-2 pr-2">Question</th>
+                                            <th class="py-2 px-2 hidden md:table-cell">Appeared In</th>
+                                            <th class="py-2 pl-2 text-center">Reps</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="questions-tbody">
+                                        ${this.generateTableRows(questionsForUnit)}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Study Material Section -->
+                        <div class="bg-white rounded-lg shadow p-6">
+                            <h2 class="text-xl font-semibold text-stone-900 mb-4">Study Material for Unit ${this.db.state.activeUnit}</h2>
+                            <p class="text-sm text-stone-600 mb-6">Expand the sections below to find detailed academic answers, relevant Indian case laws, and real-world examples for key topics within this unit. This material is designed to deepen your understanding and aid in exam preparation.</p>
+                            <div class="space-y-4">
+                                ${unitInfo.content.map(item => `
+                                    <details class="bg-stone-50 rounded-lg p-4 border border-stone-200">
+                                        <summary class="flex justify-between items-center cursor-pointer text-blue-600 font-medium">
+                                            <span class="text-base flex items-center">
+                                                <span class="arrow text-stone-500">▶</span> ${item.subTopic}
+                                            </span>
+                                        </summary>
+                                        <div class="mt-4 pt-4 border-t border-stone-200 text-stone-700">
+                                            ${item.details}
+                                            <button onclick="App.generateLLMExamples('${item.subTopic}', 'Unit ${this.db.state.activeUnit}')" class="mt-3 bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-sm transition-colors duration-200">
+                                                ✨ Generate More Examples
+                                            </button>
+                                            <button onclick="App.summarizeStudyMaterial('${item.subTopic}', \`${item.details.replace(/`/g, '\\`')}\`)" class="mt-3 ml-2 bg-purple-500 hover:bg-purple-600 text-white font-bold py-1 px-3 rounded-lg text-sm transition-colors duration-200">
+                                                ✨ Summarize
+                                            </button>
+                                            <button onclick="App.generateLLMCaseLaw('${item.subTopic}', 'Unit ${this.db.state.activeUnit}')" class="mt-3 ml-2 bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-1 px-3 rounded-lg text-sm transition-colors duration-200">
+                                                ✨ Generate Case Law
+                                            </button>
+                                        </div>
+                                    </details>
+                                `).join('')}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        this.contentArea.innerHTML = explorerHTML;
+
+        // Bind events for new elements
+        document.querySelectorAll('.unit-button').forEach(button => {
+            button.addEventListener('click', (e) => {
+                this.db.state.activeUnit = parseInt(e.target.dataset.unitId);
+                this.renderExplorer();
+            });
+        });
+
+        document.getElementById('search-input').addEventListener('input', (e) => {
+            const searchTerm = e.target.value.toLowerCase();
+            const filteredQuestions = this.db.questions.filter(q =>
+                q.unit === this.db.state.activeUnit && q.text.toLowerCase().includes(searchTerm)
+            );
+            document.getElementById('questions-tbody').innerHTML = this.generateTableRows(filteredQuestions);
+        });
+
+        // Render unit chart
+        const ctx = document.getElementById('unit-chart').getContext('2d');
+        this.db.state.currentChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: keyConcepts.labels,
+                datasets: [{
+                    label: 'Appearances',
+                    data: keyConcepts.data,
+                    backgroundColor: ['#60A5FA', '#34D399', '#FBBF24', '#F87171', '#A78BFA'],
+                    borderColor: '#FFFFFF',
+                    borderWidth: 2
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 12,
+                            font: { size: 12 }
+                        }
+                    }
+                }
+            }
+        });
+    },
+
+    generateTableRows(questions) {
+        if (questions.length === 0) {
+            return `<tr><td colspan="3" class="text-center py-8 text-stone-500">No questions found.</td></tr>`;
+        }
+        return questions.map(q => `
+            <tr class="border-b">
+                <td class="py-3 pr-2">
+                    <button onclick="App.showQuestionDetails(${q.id})" class="text-blue-600 hover:underline text-left">${q.text}</button>
+                </td>
+                <td class="py-3 px-2 text-stone-500 hidden md:table-cell">${q.years}</td>
+                <td class="py-3 pl-2 text-center font-semibold text-blue-600">${q.repetitions}</td>
+            </tr>
+        `).join('');
+    },
+
+    // Add to App object
+    async showQuestionDetails(questionId) {
+        const question = this.db.questions.find(q => q.id === questionId);
+        if (!question) {
+            console.error('Question not found:', questionId);
+            return;
+        }
+
+        const unitContent = this.db.units[question.unit].content;
+        const relatedSubTopicObj = unitContent.find(item => item.subTopic === question.relatedSubTopic);
+
+        this.modalQuestionText.textContent = question.text;
+        this.llmClarificationArea.classList.add('hidden'); // Hide LLM clarification area initially
+        this.llmClarificationText.textContent = '';
+        this.llmClarificationError.classList.add('hidden');
+
+        this.modal.classList.remove('hidden'); // Show modal immediately
+
+        // Display loader for the main answer area
+        this.modalAnswerContent.innerHTML = `
+            <div class="flex justify-center items-center h-40">
+                <div class="loader"></div>
+                <p class="ml-4 text-stone-600">Generating precise answer...</p>
+            </div>
+        `;
+        // Hide the ask LLM button until the answer is generated
+        this.askLlmButton.style.display = 'none';
+
+        let generatedAnswer = '';
+
+        if (relatedSubTopicObj) {
+            // Extract plain text from the HTML details
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = relatedSubTopicObj.details;
+            const plainTextStudyMaterial = tempDiv.textContent || tempDiv.innerText || "";
+
+            // Construct prompt based on whether it's a Part C question
+            let answerPrompt = `Based on the following study material on "${relatedSubTopicObj.subTopic}", provide a concise and precise answer to the question: "${question.text}".
+            Please synthesize the information directly addressing the question, highlighting key legal principles, relevant sections, and brief illustrative points from the material.`;
+
+            if (question.part === 'C') {
+                answerPrompt += ` For this Part C question, also include a relevant hypothetical Indian case law example that illustrates the legal principle or scenario, followed by a brief ruling or outcome. Format the case law clearly (e.g., **Case Name v. Parties**).`;
+            }
+
+            answerPrompt += ` Do NOT include phrases like "Based on the study material" or "As per the provided text". Just provide the answer directly. If the study material is insufficient, state that.
+            Study Material:
+            ${plainTextStudyMaterial}`;
+
+
+            generatedAnswer = await this.callGeminiAPI(
+                answerPrompt,
+                this.modalAnswerContent, // Target element for LLM text output
+                this.modalAnswerContent.querySelector('.loader') ? this.modalAnswerContent.querySelector('.loader').parentElement : document.createElement('div'), // Pass the container with the loader for proper display/hide
+                this.llmClarificationError // Re-use clarification error for main answer error
+            );
+
+            if (generatedAnswer) {
+                this.modalAnswerContent.innerHTML = `<h3 class="text-lg font-semibold text-blue-700 mt-4 mb-2">Precise Answer:</h3>${this.formatLLMResponse(generatedAnswer)}`;
+            } else {
+                this.modalAnswerContent.innerHTML = `
+                    <p class="text-lg font-semibold text-red-600 mb-2">Failed to generate a precise answer for this question.</p>
+                    <p>This could be due to API limits or a temporary issue. Please refer to the general study material for **"${question.relatedSubTopic}"** below:</p>
+                    <div class="bg-stone-50 rounded-lg p-4 border border-stone-200 mt-4">
+                        ${relatedSubTopicObj.details}
+                    </div>
+                `;
+            }
+
+        } else {
+            // Fallback if no specific sub-topic study material is found
+            this.modalAnswerContent.innerHTML = `
+                <p class="text-lg font-semibold text-red-600 mb-2">No direct study material available for this specific topic to generate a precise answer.</p>
+                <p>We are unable to synthesize a precise answer from our existing data for "${question.relatedSubTopic}". You can still ask the LLM for general clarification on the original question.</p>
+            `;
+        }
+        // Always show the ask LLM clarification button after trying to generate the main answer
+        this.askLlmButton.style.display = 'block';
+    },
+
+    closeModal() {
+        this.modal.classList.add('hidden');
+    },
+
+    closeExamplesModal() {
+        this.llmExamplesModal.classList.add('hidden');
+        this.llmExamplesContent.innerHTML = '';
+        this.llmExamplesError.classList.add('hidden');
+    },
+
+    closeSummaryModal() {
+        this.llmSummaryModal.classList.add('hidden');
+        this.llmSummaryContent.innerHTML = '';
+        this.llmSummaryError.classList.add('hidden');
+    },
+
+    closeCaseLawModal() {
+        this.llmCaseLawModal.classList.add('hidden');
+        this.llmCaseLawContent.innerHTML = '';
+        this.llmCaseLawError.classList.add('hidden');
+    },
+
+    // LLM Integration
+    async callGeminiAPI(prompt, targetElement, loaderElement, errorElement) {
+        // Only show loader if a valid loaderElement is provided and not hidden
+        if (loaderElement && loaderElement.style.display !== 'none') {
+            loaderElement.classList.remove('hidden');
+        } else if (loaderElement) { // if it's hidden, ensure it's removed if it exists as an element
+            loaderElement.classList.add('hidden');
+        }
+
+        // Clear target content and hide existing error messages
+        targetElement.innerHTML = ''; // Use innerHTML to clear all content including previous errors/loaders
+        if (errorElement) errorElement.classList.add('hidden');
+
+
+        try {
+            let chatHistory = [];
+            chatHistory.push({ role: "user", parts: [{ text: prompt }] });
+            const payload = { contents: chatHistory };
+            const apiKey = "AIzaSyDgFyM8GPLzpuk5mT_u2bC2RM-ndMT_VXg"; // Canvas will automatically provide this at runtime
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(`API error: ${response.status} ${response.statusText} - ${JSON.stringify(errorData)}`);
+            }
+
+            const result = await response.json();
+
+            if (result.candidates && result.candidates.length > 0 &&
+                result.candidates[0].content && result.candidates[0].content.parts &&
+                result.candidates[0].content.parts.length > 0) {
+                return result.candidates[0].content.parts[0].text;
+            } else {
+                throw new Error("No text content found in LLM response.");
+            }
+        } catch (error) {
+            console.error("Error calling Gemini API:", error);
+            if (errorElement) {
+                errorElement.textContent = `Failed to generate response: ${error.message}`;
+                errorElement.classList.remove('hidden');
+            }
+            return null;
+        } finally {
+            if (loaderElement) {
+                loaderElement.classList.add('hidden');
+            }
+        }
+    },
+
+    async askLLMForClarification(questionText) {
+        const prompt = `Please provide a concise legal clarification or an alternative perspective on the following law exam question: "${questionText}". Focus on key legal principles and potential nuances.`;
+        this.llmClarificationArea.classList.remove('hidden'); // Ensure clarification area is visible
+        const llmResponse = await this.callGeminiAPI(
+            prompt,
+            this.llmClarificationText,
+            this.llmClarificationLoader,
+            this.llmClarificationError
+        );
+        if (llmResponse) {
+            this.llmClarificationText.innerHTML = this.formatLLMResponse(llmResponse);
+        }
+    },
+
+    async generateLLMExamples(subTopic, unitTitle) {
+        this.llmExamplesModal.classList.remove('hidden');
+        this.llmExamplesTitle.textContent = `More Examples for "${subTopic}" (${unitTitle})`;
+        this.llmExamplesContent.innerHTML = `
+            <div class="flex justify-center items-center h-24">
+                <div class="loader"></div>
+                <p class="ml-4 text-stone-600">Generating examples...</p>
+            </div>
+        `; // Show loader
+        this.llmExamplesError.classList.add('hidden'); // Hide error
+
+        const prompt = `Generate 3 distinct, concise, and realistic hypothetical legal examples (scenarios or mini-case studies) for the topic of "${subTopic}" from ${unitTitle} in Law of Contract II. Each example should clearly illustrate a specific aspect or application of the concept. Format them as a numbered list.`;
+
+        const llmResponse = await this.callGeminiAPI(
+            prompt,
+            this.llmExamplesContent,
+            this.llmExamplesContent.querySelector('.loader') ? this.llmExamplesContent.querySelector('.loader').parentElement : document.createElement('div'), // Pass the container with the loader
+            this.llmExamplesError
+        );
+        if (llmResponse) {
+            this.llmExamplesContent.innerHTML = this.formatLLMResponse(llmResponse);
+        } else {
+            this.llmExamplesContent.innerHTML = `<p class="text-red-500">Failed to generate examples.</p>`;
+        }
+    },
+
+    async summarizeStudyMaterial(subTopic, contentHtml) {
+        this.llmSummaryModal.classList.remove('hidden');
+        this.llmSummaryTitle.textContent = `Summary for "${subTopic}"`;
+        this.llmSummaryContent.innerHTML = `
+            <div class="flex justify-center items-center h-24">
+                <div class="loader"></div>
+                <p class="ml-4 text-stone-600">Generating summary...</p>
+            </div>
+        `; // Show loader
+        this.llmSummaryError.classList.add('hidden'); // Hide error
+
+        // Convert HTML content to plain text before sending to LLM
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = contentHtml;
+        const plainTextContent = tempDiv.textContent || tempDiv.innerText || "";
+
+        // Truncate if too long (optional, but good practice for LLM inputs)
+        const MAX_SUMMARY_INPUT_LENGTH = 3000; // Adjust as needed
+        const summarizedInput = plainTextContent.length > MAX_SUMMARY_INPUT_LENGTH
+            ? plainTextContent.substring(0, MAX_SUMMARY_INPUT_LENGTH) + "..."
+            : plainTextContent;
+
+        const prompt = `Please provide a concise summary of the following legal study material related to "${subTopic}". Focus on the main points and key takeaways. Keep the summary to around 150-200 words. Material: ${summarizedInput}`;
+
+        const llmResponse = await this.callGeminiAPI(
+            prompt,
+            this.llmSummaryContent,
+            this.llmSummaryContent.querySelector('.loader') ? this.llmSummaryContent.querySelector('.loader').parentElement : document.createElement('div'), // Pass the container with the loader
+            this.llmSummaryError
+        );
+        if (llmResponse) {
+            this.llmSummaryContent.innerHTML = this.formatLLMResponse(llmResponse);
+        } else {
+            this.llmSummaryContent.innerHTML = `<p class="text-red-500">Failed to generate summary.</p>`;
+        }
+    },
+
+    async generateLLMCaseLaw(subTopic, unitTitle) {
+        this.llmCaseLawModal.classList.remove('hidden');
+        this.llmCaseLawTitle.textContent = `Hypothetical Case Law for "${subTopic}" (${unitTitle})`;
+        this.llmCaseLawContent.innerHTML = `
+            <div class="flex justify-center items-center h-24">
+                <div class="loader"></div>
+                <p class="ml-4 text-stone-600">Generating case law...</p>
+            </div>
+        `; // Show loader
+        this.llmCaseLawError.classList.add('hidden'); // Hide error
+
+        const prompt = `Generate 1 distinct, concise, and realistic hypothetical case law example (scenario, parties, and a brief ruling) for the legal topic of "${subTopic}" from ${unitTitle} in Law of Contract II. The case law should illustrate a specific application or interpretation of the concept. Format it clearly with a fictional case name.`;
+
+        const llmResponse = await this.callGeminiAPI(
+            prompt,
+            this.llmCaseLawContent,
+            this.llmCaseLawContent.querySelector('.loader') ? this.llmCaseLawContent.querySelector('.loader').parentElement : document.createElement('div'), // Pass the container with the loader
+            this.llmCaseLawError
+        );
+        if (llmResponse) {
+            this.llmCaseLawContent.innerHTML = this.formatLLMResponse(llmResponse);
+        } else {
+            this.llmCaseLawContent.innerHTML = `<p class="text-red-500">Failed to generate case law.</p>`;
+        }
+    },
+
+    formatLLMResponse(text) {
+        // Simple Markdown to HTML conversion for bullet points and bolding
+        let formattedText = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>'); // Bold
+        formattedText = formattedText.replace(/^- (.*)/gm, '<li>$1</li>'); // Unordered list
+        formattedText = formattedText.replace(/^\d+\. (.*)/gm, '<p>$1</p>'); // Ordered list (as paragraphs for better spacing for examples)
+        // Adjust for nested lists or general text after a list if needed (this part might need more robust markdown parser for complex cases)
+        formattedText = formattedText.replace(/<li>/g, '<ul class="list-disc list-inside ml-4"><li>');
+        formattedText = formattedText.replace(/<\/li>(\s*<ul)/g, '</li></ul>$1'); // Close ul before new ul starts if it's immediately after a list item
+        formattedText = formattedText.replace(/<\/ul>\s*<li>/g, '</ul><ul class="list-disc list-inside ml-4"><li>'); // Handle consecutive lists
+        // Ensure newlines are treated as paragraphs for general text
+        formattedText = formattedText.split('\n').map(line => {
+            if (!line.trim().startsWith('<') && line.trim() !== '') { // If not already an HTML tag and not empty
+                return `<p>${line.trim()}</p>`;
+            }
+            return line;
+        }).join('');
+        // Clean up any extra paragraph tags introduced around ul/li
+        formattedText = formattedText.replace(/<p><ul/g, '<ul').replace(/<\/ul><\/p>/g, '</ul>');
+        formattedText = formattedText.replace(/<p><p>/g, '<p>').replace(/<\/p><\/p>/g, '</p>'); // Remove double paragraphs
+
+        return formattedText;
+    },
+
+    // Data Processing
+    getOverallKeyConcepts(limit = 10) {
+        const conceptMap = new Map();
+
+        // Simplified concept extraction from question text
+        const keywordMapping = {
+            'indemnity': 'Indemnity',
+            'guarantee': 'Guarantee',
+            'surety': 'Surety & Co-Sureties',
+            'co-sureties': 'Surety & Co-Sureties',
+            'bailment': 'Bailment',
+            'pledge': 'Pledge',
+            'agent': 'Agency',
+            'agency': 'Agency',
+            'ratification': 'Agency by Ratification',
+            'delegation': 'Delegation of Authority',
+            'sale of goods': 'Sale of Goods',
+            'condition': 'Conditions & Warranties',
+            'warranty': 'Warranties',
+            'caveat emptor': 'Caveat Emptor',
+            'unpaid seller': 'Unpaid Seller',
+            'partnership': 'Partnership',
+            'partner': 'Partnership',
+            'llp': 'LLP',
+            'minor': 'Minor as Partner',
+            'registration': 'Firm Registration'
+        };
+
+        this.db.questions.forEach(q => {
+            const text = q.text.toLowerCase();
+            let foundConcept = false;
+            for (const [keyword, concept] of Object.entries(keywordMapping)) {
+                if (text.includes(keyword)) {
+                    conceptMap.set(concept, (conceptMap.get(concept) || 0) + q.repetitions);
+                    foundConcept = true;
+                    break;
+                }
+            }
+        });
+
+        const sortedConcepts = [...conceptMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+        return {
+            labels: sortedConcepts.map(c => c[0]),
+            data: sortedConcepts.map(c => c[1])
+        };
+    },
+
+    getUnitKeyConcepts(unitId, limit = 5) {
+        const questionsInUnit = this.db.questions.filter(q => q.unit === unitId);
+        const conceptMap = new Map();
+
+        questionsInUnit.forEach(q => {
+            const concepts = this.extractConceptsFromText(q.text);
+            concepts.forEach(concept => {
+                conceptMap.set(concept, (conceptMap.get(concept) || 0) + q.repetitions);
+            });
+        });
+
+        const sortedConcepts = [...conceptMap.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit);
+        return {
+            labels: sortedConcepts.map(c => c[0]),
+            data: sortedConcepts.map(c => c[1])
+        };
+    },
+
+    extractConceptsFromText(text) {
+        const concepts = new Set();
+        const lowerText = text.toLowerCase();
+        const keywordMapping = {
+            'indemnity': 'Indemnity', 'guarantee': 'Guarantee', 'surety': 'Surety', 'bailment': 'Bailment',
+            'pledge': 'Pledge', 'agent': 'Agency', 'ratification': 'Ratification', 'delegation': 'Delegation',
+            'sale': 'Sale', 'condition': 'Conditions', 'warranty': 'Warranties', 'caveat emptor': 'Caveat Emptor',
+            'unpaid seller': 'Unpaid Seller', 'partnership': 'Partnership', 'llp': 'LLP', 'minor': 'Minor Partner',
+            'registration': 'Registration', 'delivery': 'Delivery', 'property': 'Passing of Property'
+        };
+        for (const [keyword, concept] of Object.entries(keywordMapping)) {
+            if (lowerText.includes(keyword)) {
+                concepts.add(concept);
+            }
+        }
+        return concepts.size > 0 ? Array.from(concepts) : ['General'];
+    }
+};
+
+document.addEventListener('DOMContentLoaded', () => App.init());
+
+</script>
+</body>
+</html>
